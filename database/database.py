@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 
 # CONECTAR A LA BD
 engine = create_engine("sqlite:///nutrition.db")
@@ -23,39 +23,43 @@ class Cliente(Base):
     intolerancias = Column(String(100))
     objetivos = Column(String(100))
 
+    citas = relationship("Cita", back_populates="cliente")
+
 # TABLA CITAS 
 
-    class  Cita(Base):
-        __tablename__ = "citas"
+class  Cita(Base):
+    __tablename__ = "citas"
 
-        id = Column(Integer, primary_key= True, autoincrement = True)
-        cliente_id = Column(Integer,ForeignKey("clientes.id"))
-        fecha = Column(DateTime)
-        duracion = Column(Integer)
-        notas_sesion = Column(String(500))
-        completada = Column(Integer, default = 0)
+    id = Column(Integer, primary_key= True, autoincrement = True)
+    cliente_id = Column(Integer,ForeignKey("clientes.id"))
+    fecha = Column(DateTime)
+    duracion = Column(Integer)
+    notas_sesion = Column(String(500))
+    completada = Column(Integer, default = 0)
+
+    cliente = relationship("Cliente", back_populates="citas")
 
 
 # TABLA EVOLUCIÓN 
 
-    class Evolucion(Base):
-        __tablename__ = "evolucion"
+class Evolucion(Base):
+    __tablename__ = "evolucion"
 
-        id = Column(Integer,primary_key= True, autoincrement= True)
-        cliente_id = Column(Integer, ForeignKey("clientes.id"))
-        fecha = Column(DateTime)
-        peso = Column(Float)
-        notas = Column(String(500))
+    id = Column(Integer,primary_key= True, autoincrement= True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"))
+    fecha = Column(DateTime)
+    peso = Column(Float)
+    notas = Column(String(500))
 
 # TABLA DIETA
 
-    class Dieta(Base):
-        __tablename__ = "dieta"
-        id = Column(Integer, primary_key= True, autoincrement= True)
-        nombre = Column(String(100))
-        descripcion = Column(String(500))
-        calorias_objetivo = Column(String(200))
-        fecha_creacion = Column(DateTime)
+class Dieta(Base):
+    __tablename__ = "dieta"
+    id = Column(Integer, primary_key= True, autoincrement= True)
+    nombre = Column(String(100))
+    descripcion = Column(String(500))
+    calorias_objetivo = Column(String(200))
+    fecha_creacion = Column(DateTime)
 
 
 # CREAR LAS TABLAS

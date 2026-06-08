@@ -43,7 +43,7 @@ def ir_clientes():
     mostrar_vista(vista_clientes)
 
 def ir_citas():
-    mostrar_vista(vista_citas)
+    mostrar_vista(vista_citas)  
 
 # BOTONES SIDEBAR
 
