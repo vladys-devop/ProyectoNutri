@@ -1,7 +1,7 @@
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from database.database import Session,Cita
-from components.formularios import agregar_cita
+from components.formularios import agregar_cita, editar_cita
 
 def vista_citas(parent):
     # CREAR FRAME
@@ -51,6 +51,19 @@ def vista_citas(parent):
 
         actualizar_tabla()
 
+    def abrir_editar_cita():
+
+        seleccion = tabla.selection()
+
+        if not seleccion:
+            print("Selecciona una cita.")
+            return 
+        
+        cita_id = tabla.item(seleccion[0])["values"][0]
+        editar_cita(frame,cita_id)
+
+        actualizar_tabla()
+
 
     # FRAME DE LA TABLA A CONTINUACIÓN DE LOS BOTONES
 
@@ -79,12 +92,12 @@ def vista_citas(parent):
 
     # ANCHO DE LAS COLUMNAS
 
-    tabla.column("ID", width= 40)
-    tabla.column("Cliente", width=150)
-    tabla.column("Fecha", width= 100)
-    tabla.column("Hora", width= 80)
-    tabla.column("Duración", width= 100)
-    tabla.column("Estado", width= 80)
+    tabla.column("ID", width= 40, anchor = CENTER)
+    tabla.column("Cliente", width=150, anchor = CENTER)
+    tabla.column("Fecha", width= 100, anchor = CENTER)
+    tabla.column("Hora", width= 80, anchor = CENTER)
+    tabla.column("Duración", width= 100, anchor = CENTER)
+    tabla.column("Estado", width= 80, anchor = CENTER)
 
     tabla.pack(fill=BOTH, expand= True)
 
@@ -128,7 +141,7 @@ def vista_citas(parent):
     boton1 = tb.Button(frame_botones, text="Nueva Cita", command=lambda: agregar_cita(frame), bootstyle="success")
     boton1.pack(side=LEFT, padx=5)
 
-    boton2 = tb.Button(frame_botones, text="Editar Cita", bootstyle="info")
+    boton2 = tb.Button(frame_botones, text="Editar Cita", command= abrir_editar_cita,  bootstyle="info")
     boton2.pack(side=LEFT, padx=5)
 
     boton3 = tb.Button(frame_botones, text="Eliminar Cita", command=eliminar_cita, bootstyle="danger")

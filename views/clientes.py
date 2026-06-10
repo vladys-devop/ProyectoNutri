@@ -1,7 +1,7 @@
 import ttkbootstrap as tb
 from ttkbootstrap.constants import * 
 from database.database import Session,Cliente
-from components.formularios import agregar_cliente, editar_cliente
+from components.formularios import agregar_cliente, editar_cliente, ficha_cliente
 
 
 def vista_clientes(parent):
@@ -50,6 +50,7 @@ def vista_clientes(parent):
         editar_cliente(frame,cliente_id)
         actualizar_tabla()
 
+
     # BOTONES
 
     boton1 = tb.Button(frame_botones, text = "Nuevo Cliente", command = lambda: agregar_cliente(frame), bootstyle= "success")
@@ -93,12 +94,12 @@ def vista_clientes(parent):
 
     # ANCHO DE LAS COLUMNAS
 
-    tabla.column("ID", width= 40)
-    tabla.column("Nombre", width=150)
-    tabla.column("Email", width= 150)
-    tabla.column("Teléfono", width= 100)
-    tabla.column("Edad", width= 50)
-    tabla.column("Fecha Registro", width= 120)
+    tabla.column("ID", width= 40, anchor = CENTER)
+    tabla.column("Nombre", width=150, anchor = CENTER)
+    tabla.column("Email", width= 150, anchor = CENTER)
+    tabla.column("Teléfono", width= 100, anchor = CENTER)
+    tabla.column("Edad", width= 50, anchor = CENTER)
+    tabla.column("Fecha Registro", width= 120, anchor = CENTER)
 
 # LLENAR LA TABLA
 
@@ -137,8 +138,19 @@ def vista_clientes(parent):
     boton4.pack(side=LEFT, padx=5)
             
     
+    # PODER ACCEDER AL INTERIOR DE FICHA DE CLIENTES
 
-    # BORRAR CLIENTES 
+    def abrir_ficha_cliente(e):
+        seleccion = tabla.selection()
+
+        if not seleccion:
+            print("Selecciona un cliente.")
+            return
+        
+        cliente_id = tabla.item(seleccion[0])["values"][0]
+        ficha_cliente(frame, cliente_id)
+
+    tabla.bind("<Double-1>", abrir_ficha_cliente) 
     
     
 

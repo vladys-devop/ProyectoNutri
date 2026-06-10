@@ -220,7 +220,7 @@ def editar_cliente(parent,cliente_id):
     session.close()
 
     if not cliente:
-        print("Cliente no encotnrado")
+        print("Cliente no encontrado")
         return 
         
     # NOMBRE 
@@ -317,3 +317,147 @@ def editar_cliente(parent,cliente_id):
     # BOTÓN DE GUARDAR
     boton_guardar = tb.Button(ventana, text="Guardar", command= guardar_cambios, bootstyle= "success")
     boton_guardar.pack(pady=20)
+
+
+def editar_cita(parent, cita_id):
+    ventana = tb.Toplevel(parent)
+    ventana.title("Editar Cita")
+    ventana.geometry("400x600")
+
+
+    # OBTENER LA CITA
+
+    session = Session()
+    cita = session.query(Cita).filter_by(id=cita_id).first()
+    
+    if not cita: 
+        print("Cita no encontrada.")
+        session.close()
+        return 
+    
+
+    # GUARDAR NOMBRE ANTES DE CERRAR
+
+    cliente_nombre_actual = cita.cliente.nombre if cita.cliente else ""
+    
+    # OBTENER CLIENTES
+
+    clientes = session.query(Cliente).all()
+    nombres_clientes = [cliente.nombre for cliente in clientes]
+    
+    session.close()
+    
+    # CREAR COMBOBOX
+
+    label_cliente = tb.Label(ventana, text="Cliente:")
+    label_cliente.pack(pady=5, padx=20, anchor=W)
+
+    combobox_cliente = Combobox(ventana, values=nombres_clientes, width=30)
+    combobox_cliente.insert(0, cliente_nombre_actual)
+    combobox_cliente.pack(pady=5, padx=20, fill=X)
+
+    
+    # FECHA 
+
+    label_fecha = tb.Label(ventana, text = "Fecha:")
+    label_fecha.pack(pady=5,padx=20,anchor=W)
+    entry_fecha = tb.Entry(ventana, width=30)
+    entry_fecha.insert(0,cita.fecha.strftime("%d/%m/%Y"))
+    entry_fecha.pack(pady=5,padx=20,fill=X)
+
+    # HORA 
+
+    
+    label_hora = tb.Label(ventana, text = "Hora:")
+    label_hora.pack(pady=5,padx=20,anchor=W)
+    entry_hora = tb.Entry(ventana, width=30)
+    entry_hora.insert(0,cita.fecha.strftime("%H:%M"))
+    entry_hora.pack(pady=5,padx=20,fill=X)
+
+    # DURACIÓN: 
+
+    label_duracion = tb.Label(ventana, text = "Duración:")
+    label_duracion.pack(pady=5,padx=20,anchor=W)
+    entry_duracion = tb.Entry(ventana, width=30)
+    entry_duracion.insert(0,cita.duracion)
+    entry_duracion.pack(pady=5,padx=20,fill=X)
+    
+    # NOTAS
+
+    
+    label_notas = tb.Label(ventana, text = "Notas:")
+    label_notas.pack(pady=5,padx=20,anchor=W)
+    entry_notas = tb.Entry(ventana, width=30)
+    entry_notas.insert(0,cita.notas_sesion)
+    entry_notas.pack(pady=5,padx=20,fill=X)
+
+    def guardar_cambios():
+        session = Session()
+        cita = session.query(Cita).filter_by(id=cita_id).first()
+
+        # OBTENEMOS EL CLIEJNTE POR EL NOMBRE
+        cliente_nombre = combobox_cliente.get()
+        cliente = session.query(Cliente).filter_by(nombre = cliente_nombre).first()
+
+        if cliente: 
+            fecha_hora = datetime.strptime(f"{entry_fecha.get()} {entry_hora.get()}", "%d/%m/%Y %H:%M")
+            cita.cliente_id = cliente.id
+            cita.fecha = fecha_hora 
+            cita.duracion = int(entry_duracion.get()) if entry_duracion.get() else None
+            cita.notas_sesion = entry_notas.get()
+
+            session.commit()
+        
+        session.close()
+        ventana.destroy()
+
+
+    # BOTÓN DE GUARDAR
+    boton_guardar = tb.Button(ventana, text="Guardar", command= guardar_cambios, bootstyle= "success")
+    boton_guardar.pack(pady=20)
+
+
+
+def ficha_cliente(parent, cliente_id):
+    # CREAMOS LA VENTANA
+    ventana = tb.Toplevel(parent)
+    ventana.title("Ficha del Cliente")
+    ventana.geometry("700x600")
+
+    # OBTENEMOS EL CLIENTE
+
+    session = Session()
+    cliente = session.query(Cliente).filter_by(id = cliente_id).first()
+    session.close()
+
+    if not cliente:
+        print("Cliente no encontrado.")
+        return
+    
+    # CREAR NOTEBOOK 
+    notebook = tb.Notebook(ventana)
+    notebook.pack(fill=BOTH, expand=True,padx=10, pady=10)
+
+    # 1. INFORMACION 
+
+    tab_info = tb.Frame(notebook)
+    notebook.add(tab_info, text="Información")
+
+    tb.Label(tab_info, text=f"Nombre: {cliente.nombre}", font=("Arial",12)).pack(pady=10)
+    tb.Label(tab_info, text=f"Email: {cliente.email}", font = ("Arial",12)).pack(pady=10)
+    tb.Label(tab_info,text= f"Teléfono: {cliente.telefono}", font = ("Arial",12)).pack(pady=10)
+    tb.Label(tab_info,text= f"Edad: {cliente.edad}", font = ("Arial",12)).pack(pady=10)
+    tb.Label(tab_info,text= f"Peso: {cliente.peso_inicial}", font = ("Arial",12)).pack(pady=10)
+    tb.Label(tab_info,text= f"Altura: {cliente.altura}", font = ("Arial",12)).pack(pady=10)
+
+    # 2. DIETA
+    tab_dieta = tb.Frame(notebook)
+    notebook.add(tab_dieta,text = "Dieta")
+    tb.Label(tab_dieta, text = "Archivo Dieta", font= ("Arial",14)).pack(pady= 20)
+
+    # 3. CITAS
+    tab_citas = tb.Frame(notebook)
+    notebook.add(tab_citas, text="Citas")
+    tb.Label(tab_citas, text ="Citas del Cliente",font=("Arial",14)).pack(pady=20)
+
+
