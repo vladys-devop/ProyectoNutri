@@ -1,8 +1,12 @@
 import ttkbootstrap as tb
 from ttkbootstrap.constants import * 
-from database.database import Session, Cliente, Cita
+from database.database import Session, Cliente, Cita, Dieta
 from datetime import datetime
 from tkinter.ttk import Combobox
+from tkinter.filedialog import askopenfilename, asksaveasfilename
+import os
+import tempfile
+
 
 def agregar_cliente(parent):
     # CREAR VENTANA
@@ -185,7 +189,7 @@ def agregar_cita(parent):
         cliente = session.query(Cliente).filter_by(nombre = cliente_nombre).first()
 
         if cliente: 
-            fecha_hora = datetime.strptime(f"{fecha} {hora}", "%d/%m/%Y %H:%M")
+            fecha_hora = datetime.strptime(f"{fecha} {hora}", "%d.%m.%Y %H:%M")
 
             nueva_cita = Cita(
                 cliente_id = cliente.id,
@@ -400,7 +404,7 @@ def editar_cita(parent, cita_id):
         cliente = session.query(Cliente).filter_by(nombre = cliente_nombre).first()
 
         if cliente: 
-            fecha_hora = datetime.strptime(f"{entry_fecha.get()} {entry_hora.get()}", "%d/%m/%Y %H:%M")
+            fecha_hora = datetime.strptime(f"{entry_fecha.get()} {entry_hora.get()}", "%d.%m.%Y %H:%M")
             cita.cliente_id = cliente.id
             cita.fecha = fecha_hora 
             cita.duracion = int(entry_duracion.get()) if entry_duracion.get() else None
@@ -452,12 +456,183 @@ def ficha_cliente(parent, cliente_id):
 
     # 2. DIETA
     tab_dieta = tb.Frame(notebook)
-    notebook.add(tab_dieta,text = "Dieta")
-    tb.Label(tab_dieta, text = "Archivo Dieta", font= ("Arial",14)).pack(pady= 20)
+    notebook.add(tab_dieta, text="Dieta")
+
+    # TABLA DIETAS
+    frame_tabla_dietas = tb.Frame(tab_dieta)
+    frame_tabla_dietas.pack(fill=BOTH, expand=True, padx=20, pady=10)
+
+    columnas_dieta = ("ID", "Nombre", "Fecha")
+    tabla_dietas = tb.Treeview(frame_tabla_dietas, columns=columnas_dieta, show="headings", height=10)
+
+    tabla_dietas.heading("ID", text="ID")
+    tabla_dietas.heading("Nombre", text="Nombre")
+    tabla_dietas.heading("Fecha", text="Fecha")
+
+    tabla_dietas.column("ID", width=40, anchor="center")
+    tabla_dietas.column("Nombre", width=150, anchor="center")
+    tabla_dietas.column("Fecha", width=120, anchor="center")
+
+    # LLENAR TABLA CON DIETAS DEL CLIENTE
+    session_dieta = Session()
+    dietas = session_dieta.query(Dieta).filter_by(cliente_id=cliente_id).all()
+    for dieta in dietas:
+        tabla_dietas.insert("", "end", values=(
+            dieta.id,
+            dieta.nombre,
+            dieta.fecha.strftime("%d/%m/%Y") if dieta.fecha else "N/A"
+        ))
+    session_dieta.close()
+
+    tabla_dietas.pack(fill=BOTH, expand=True)
+
+    # BOTONES
+    frame_botones_dieta = tb.Frame(tab_dieta)
+    frame_botones_dieta.pack(fill=X, padx=20, pady=10)
+
+    def agregar_dieta():
+        from tkinter.filedialog import askopenfilename
+        archivo = askopenfilename(filetypes=[("PDF files", "*.pdf")])
+        if archivo:
+            nombre = os.path.basename(archivo).replace(".pdf", "")
+            with open(archivo, "rb") as f:
+                contenido = f.read()
+            
+            session_add = Session()
+            nueva_dieta = Dieta(
+                cliente_id=cliente_id,
+                nombre=nombre,
+                fecha=datetime.now(),
+                archivo=contenido
+            )
+            session_add.add(nueva_dieta)
+            session_add.commit()
+            session_add.close()
+            
+            actualizar_tabla_dietas()
+
+    def abrir_dieta():
+        seleccion = tabla_dietas.selection()
+        if not seleccion:
+            return
+        
+        dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
+        session_open = Session()
+        dieta = session_open.query(Dieta).filter_by(id=dieta_id).first()
+        if dieta and dieta.archivo:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+                f.write(dieta.archivo)
+                os.startfile(f.name)
+        session_open.close()
+
+    def descargar_dieta():
+        seleccion = tabla_dietas.selection()
+        if not seleccion:
+            return
+        
+        dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
+        session_down = Session()
+        dieta = session_down.query(Dieta).filter_by(id=dieta_id).first()
+        if dieta and dieta.archivo:
+            archivo = asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+            if archivo:
+                with open(archivo, "wb") as f:
+                    f.write(dieta.archivo)
+        session_down.close()
+
+    def eliminar_dieta():
+        seleccion = tabla_dietas.selection()
+        if not seleccion:
+            return
+        
+        dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
+        session_del = Session()
+        dieta = session_del.query(Dieta).filter_by(id=dieta_id).first()
+        if dieta:
+            session_del.delete(dieta)
+            session_del.commit()
+        session_del.close()
+        actualizar_tabla_dietas()
+
+
+
+    def actualizar_tabla_dietas():
+        for item in tabla_dietas.get_children():
+            tabla_dietas.delete(item)
+        
+        session_upd = Session()
+        dietas = session_upd.query(Dieta).filter_by(cliente_id=cliente_id).all()
+        for dieta in dietas:
+            tabla_dietas.insert("", "end", values=(
+                dieta.id,
+                dieta.nombre,
+                dieta.fecha.strftime("%d/%m/%Y") if dieta.fecha else "N/A"
+            ))
+        session_upd.close()
+
+    boton_agregar_dieta = tb.Button(frame_botones_dieta, text="Agregar Dieta", command=agregar_dieta, bootstyle="success")
+    boton_agregar_dieta.pack(side=LEFT, padx=5)
+    boton_abrir_dieta = tb.Button(frame_botones_dieta, text="Abrir", command=abrir_dieta, bootstyle="info")
+    boton_abrir_dieta.pack(side=LEFT, padx=5)
+
+    boton_descargar_dieta = tb.Button(frame_botones_dieta, text="Descargar", command=descargar_dieta, bootstyle="warning")
+    boton_descargar_dieta.pack(side=LEFT, padx=5)
+
+    boton_eliminar_dieta = tb.Button(frame_botones_dieta, text="Eliminar", command=eliminar_dieta, bootstyle="danger")
+    boton_eliminar_dieta.pack(side=LEFT, padx=5)
+
+
+
+        
+        
+        
+
+
 
     # 3. CITAS
     tab_citas = tb.Frame(notebook)
     notebook.add(tab_citas, text="Citas")
+
+    # TABLA CITAS
+
+    frame_tabla_citas_cliente = tb.Frame(tab_citas)
+    frame_tabla_citas_cliente.pack(fill=BOTH, expand=True,padx=20,pady=10)
+    
+    columnas_citas_cliente = ("ID","Fecha","Hora","Duración","Notas")
+    tabla_citas_cliente = tb.Treeview(frame_tabla_citas_cliente, columns= columnas_citas_cliente,show="headings",height=10)
+
+    tabla_citas_cliente.heading("ID", text ="ID")
+    tabla_citas_cliente.heading("Fecha", text="Fecha")
+    tabla_citas_cliente.heading("Hora", text="Hora")
+    tabla_citas_cliente.heading("Duración", text="Duración")
+    tabla_citas_cliente.heading("Notas", text="Notas")
+
+
+    tabla_citas_cliente.column("ID",width= 40, anchor="center")
+    tabla_citas_cliente.column("Fecha",width= 100, anchor="center")
+    tabla_citas_cliente.column("Hora",width= 80, anchor="center")
+    tabla_citas_cliente.column("Duración",width= 80, anchor="center")
+    tabla_citas_cliente.column("Notas",width= 200, anchor="w")
+
+    # OBTENER LAS CITAS DEL CLIENTE
+
+    session_citas_cliente =  Session()
+    citas_cliente = session_citas_cliente.query(Cita).filter_by(cliente_id = cliente_id).order_by(Cita.fecha).all()
+
+    for cita in citas_cliente:
+        tabla_citas_cliente.insert("","end", values=(
+            cita.id,
+            cita.fecha.strftime("%d.%m.%Y") if cita.fecha else "N/A",
+            cita.fecha.strftime("%H:%M") if cita.fecha else "N/A",
+            f"{cita.duracion} min" if cita.duracion else "N/A",
+            cita.notas_sesion if cita.notas_sesion else "No hay notas."
+        ))
+
+
+    session_citas_cliente.close()
+    tabla_citas_cliente.pack(fill=BOTH, expand= True)
+
+                            
     tb.Label(tab_citas, text ="Citas del Cliente",font=("Arial",14)).pack(pady=20)
 
 

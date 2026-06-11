@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, ForeignKey, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
@@ -22,8 +22,10 @@ class Cliente(Base):
     alergias = Column(String(100))
     intolerancias = Column(String(100))
     objetivos = Column(String(100))
+    dietas_pdf = Column(LargeBinary)
 
     citas = relationship("Cita", back_populates="cliente")
+    dietas = relationship("Dieta", back_populates="cliente")
 
 # TABLA CITAS 
 
@@ -38,6 +40,7 @@ class  Cita(Base):
     completada = Column(Integer, default = 0)
 
     cliente = relationship("Cliente", back_populates="citas")
+    
 
 
 # TABLA EVOLUCIÓN 
@@ -52,14 +55,15 @@ class Evolucion(Base):
     notas = Column(String(500))
 
 # TABLA DIETA
-
 class Dieta(Base):
     __tablename__ = "dieta"
-    id = Column(Integer, primary_key= True, autoincrement= True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"))  
     nombre = Column(String(100))
-    descripcion = Column(String(500))
-    calorias_objetivo = Column(String(200))
-    fecha_creacion = Column(DateTime)
+    fecha = Column(DateTime)
+    archivo = Column(LargeBinary) 
+    
+    cliente = relationship("Cliente", back_populates="dietas")
 
 
 # CREAR LAS TABLAS
