@@ -1,6 +1,6 @@
 import ttkbootstrap as tb
 from ttkbootstrap.constants import * 
-from database.database import Session, Cliente, Cita, Dieta
+from database.database import Session, Cliente, Cita, Dieta, Evolucion
 from datetime import datetime
 from tkinter.ttk import Combobox
 from tkinter.filedialog import askopenfilename, asksaveasfilename
@@ -635,4 +635,99 @@ def ficha_cliente(parent, cliente_id):
                             
     tb.Label(tab_citas, text ="Citas del Cliente",font=("Arial",14)).pack(pady=20)
 
+    # 4. EVOLUCIÓN 
 
+    tab_evolucion = tb.Frame(notebook)
+    notebook.add(tab_evolucion, text ="Evolución")
+
+    # TABLA DE EVOLUCIÓN
+    frame_tabla_evolucion = tb.Frame(tab_evolucion)
+    frame_tabla_evolucion.pack(fill= BOTH, expand = True, padx=20, pady=10)
+
+    columnas_evo = ("ID","Fecha","Peso (KG)","Notas")
+    tabla_evolucion = tb.Treeview(frame_tabla_evolucion,columns=columnas_evo,show = "headings", height=10)
+
+    tabla_evolucion.heading("ID",text="ID")
+    tabla_evolucion.heading("Fecha", text="Fecha")
+    tabla_evolucion.heading("Peso (KG)",text="Peso (KG)")
+    tabla_evolucion.heading("Notas", text="Notas")
+
+    tabla_evolucion.column("ID",width=40,anchor="center")
+    tabla_evolucion.column("Fecha",width=100,anchor="center")
+    tabla_evolucion.column("Peso (KG)",width=80,anchor="center")
+    tabla_evolucion.column("Notas",width=200,anchor="w")
+
+    # OBTENER EVOLUCIÓN 
+
+    session_evo = Session()
+    evolucion = session_evo.query(Evolucion).filter_by(cliente_id = cliente_id) .order_by(Evolucion.fecha.desc()).all()
+
+    for evo in evolucion: 
+        tabla_evolucion.insert("", "end", values =(
+            evo.id,
+            evo.fecha.strftime("%d.%m.%Y") if evo.fecha else "N/A",
+            evo.peso if evo.peso else "N/A",
+            evo.notas if evo.notas else "No hay notas."
+        ))
+
+    session_evo.close()
+    tabla_evolucion.pack(fill=BOTH,expand=True)
+
+    # BOTONES 
+    frame_botones_evo = tb.Frame(tab_evolucion)
+    frame_botones_evo.pack(fill=X, padx=20,pady=10)
+
+    def agregar_evolucion():
+        ventana_evo = tb.Toplevel(ventana)
+        ventana_evo.title("Nueva Evolución")
+        ventana_evo.geometry("400x300")
+
+        tb.Label(ventana_evo, text ="Peso (KG):").pack(padx=20,pady=5,anchor=W)
+        entry_peso = tb.Entry(ventana_evo,width=30)
+        entry_peso.pack(pady=5,padx=20,fill=BOTH,expand=True)
+
+        tb.Label(ventana_evo,text="Notas:").pack(pady=5,padx=20,anchor=W)
+        text_notas = tb.Text(ventana_evo,height=6,width=40)
+        text_notas.pack(pady=5,padx=20,fill=BOTH,expand=True)
+
+        def guardar_evo():
+            peso = entry_peso.get()
+            notas = text_notas.get("1.0", "end-1c")
+
+            if not peso:
+                print("Ingresa el peso")
+                return
+            
+            session_add_evo = Session()
+            nueva_evo = Evolucion(cliente_id = cliente_id, fecha = datetime.now(), peso = float(peso), notas = notas)
+
+
+            session_add_evo.add(nueva_evo)
+            session_add_evo.commit()
+            session_add_evo.close()
+
+            actualizar_tabla_evolucion()
+            ventana_evo.destroy()
+
+        boton_guardar = tb.Button(ventana_evo, text="Guardar", command = guardar_evo, bootstyle= "success")
+        boton_guardar.pack(pady=20)
+
+    def actualizar_tabla_evolucion():
+        for item in tabla_evolucion.get_children():
+            tabla_evolucion.delete(item)
+
+        session_up_evo = Session()
+        evolucion = session_up_evo.query(Evolucion).filter_by(cliente_id=cliente_id).order_by(Evolucion.fecha.desc()).all()
+        for evo in evolucion:
+            tabla_evolucion.insert("", "end",values=(
+                evo.id,
+                evo.fecha.strftime("%d.%m.%Y") if evo.fecha else "N/A",
+                evo.peso if evo.peso else "N/A",
+                evo.notas if evo.notas else "No hay notas."
+
+            ))
+
+        session_up_evo.close()
+    
+    boton_agregar_evo = tb.Button(frame_botones_evo, text="Agregar Evolución", command = agregar_evolucion, bootstyle= "success")
+    boton_agregar_evo.pack(side=LEFT,padx=5)
