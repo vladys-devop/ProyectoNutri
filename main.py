@@ -1,13 +1,25 @@
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+from views.login import login_view, crear_admin
 from views.dashboard import vista_dashboard
 from views.clientes import vista_clientes
 from views.citas import vista_citas
+
+# CREAMOS 1 ADMIN
+
+crear_admin()
+
 
 app = tb.Window(themename="solar")
 
 app.title("Gestió Clients")
 app.geometry("1400x800")
+
+# MOSTRAR LOGIN
+
+login_view(app)
+
+
 
 
 # MENÚ LATERAL 

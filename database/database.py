@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, ForeignKey, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from datetime import datetime
 
 # CONECTAR A LA BD
 engine = create_engine("sqlite:///nutrition.db")
@@ -64,6 +65,15 @@ class Dieta(Base):
     archivo = Column(LargeBinary) 
     
     cliente = relationship("Cliente", back_populates="dietas")
+
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+    id = Column(Integer, primary_key=True,autoincrement=True)
+    nombre_usuario = Column(String(50), unique= True, nullable= False)
+    password = Column(String(100), nullable= False)
+    email = Column(String(100),nullable= False)
+    fecha_creacion = Column(DateTime, default= datetime.now)
 
 
 # CREAR LAS TABLAS

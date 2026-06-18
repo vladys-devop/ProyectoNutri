@@ -6,13 +6,50 @@ from tkinter.ttk import Combobox
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 import os
 import tempfile
+import re
 
 
-def agregar_cliente(parent):
+
+
+# VALIDACIONES 
+
+def validar_email(email):
+    regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+    return re.match(regex, email) is not None
+
+def validar_campos_cliente(nombre,email,telefono):
+    if not nombre or not nombre.strip():
+        return False, "El nombre es obligatorio"
+    
+    if not email or not email.strip():
+        return False, "El email es obligatorio"
+    
+    if not validar_email(email):
+        return False, "Formato de email inválido."
+    
+    if telefono and not telefono.isdigit():
+        return False, "El teléfono solo puede contener números."
+    
+    return True, "OK"
+
+def validar_campos_cita(cliente_nombre,fecha,hora,duracion):
+    if not cliente_nombre or not cliente_nombre.strip():
+        return False, "Debes de seleccionar un cliente"
+    
+    if not fecha or not fecha.strip():
+        return False, "La fecha es obligatoria"
+    
+    if not hora or not hora.strip():
+        return False, "La hora es obligatoria"
+    
+    if duracion and not duracion.isdigit():
+        return False, "La duración tiene que ser un número"
+    
     # CREAR VENTANA
+def agregar_cliente(parent):
     ventana = tb.Toplevel(parent)
     ventana.title("Nuevo Cliente")
-    ventana.geometry("400x600")
+    ventana.geometry("400x700")
 
     # NOMBRE
 
@@ -90,7 +127,12 @@ def agregar_cliente(parent):
         intolerancias = entry_intolerancias.get()
         objetivos = entry_objetivos.get()
 
-    # GUARDAR EN LA DB
+        # VALIDAR LOS DATOS
+
+        valido, mensaje = validar_campos_cliente(nombre,email,telefono)
+        if not valido: 
+            print(f"{mensaje}")
+            return
 
         session = Session()
         nuevo_cliente = Cliente(
@@ -121,7 +163,7 @@ def agregar_cliente(parent):
 def agregar_cita(parent):
     ventana = tb.Toplevel(parent)
     ventana.title("Nueva Cita")
-    ventana.geometry("400x600")
+    ventana.geometry("400x700")
 
 
     # OBTENER LOS CLIENTES
@@ -182,6 +224,13 @@ def agregar_cita(parent):
         duracion = entry_duracion.get()
         notas = entry_notas.get()
 
+        # VALIDAR LOS CAMPOS 
+
+        valido, mensaje = validar_campos_cita(cliente_nombre, fecha,hora,duracion)
+        if not valido:
+            print(f"{mensaje}")
+            return
+
 
         # OBTENER EL ID DEL CLIENTE A TRAVÉS DEL NOMBRE
 
@@ -215,7 +264,7 @@ def editar_cliente(parent,cliente_id):
     # CREAMOS UNA VENTANA
     ventana = tb.Toplevel(parent)
     ventana.title("Editar Cliente")
-    ventana.geometry("400x600")
+    ventana.geometry("400x700")
 
     # OBTENEMOS EL CLIENTE DE LA BD 
 
@@ -326,7 +375,7 @@ def editar_cliente(parent,cliente_id):
 def editar_cita(parent, cita_id):
     ventana = tb.Toplevel(parent)
     ventana.title("Editar Cita")
-    ventana.geometry("400x600")
+    ventana.geometry("400x700")
 
 
     # OBTENER LA CITA
@@ -731,3 +780,5 @@ def ficha_cliente(parent, cliente_id):
     
     boton_agregar_evo = tb.Button(frame_botones_evo, text="Agregar Evolución", command = agregar_evolucion, bootstyle= "success")
     boton_agregar_evo.pack(side=LEFT,padx=5)
+
+
