@@ -9,6 +9,7 @@ def vista_clientes(parent):
     frame = tb.Frame(parent)
     frame.pack(fill= BOTH, expand= True)
 
+
     # TITULO 
 
     titulo = tb.Label(frame, text ="GESTIÓN DE CLIENTES",font = ("Arial", 20, "bold"))
@@ -114,6 +115,37 @@ def vista_clientes(parent):
 
 
     tabla.pack(fill=BOTH, expand= True)
+
+    # BÚSQUEDA CLIENTES
+
+    frame_busqueda = tb.Frame(frame)
+    frame_busqueda.pack(fill=X, padx=20, pady=10)
+
+    tb.Label(frame_busqueda, text="Buscar:").pack(side=LEFT, padx=5)
+    entry_busqueda = tb.Entry(frame_busqueda, width=30)
+    entry_busqueda.pack(side=LEFT, padx=5, fill=X, expand=True)
+
+    def buscar_cliente(event=None):
+        termino = entry_busqueda.get().lower()
+        for item in tabla.get_children():
+            tabla.delete(item)
+    
+        session = Session()
+        clientes = session.query(Cliente).all()
+        session.close()
+    
+        for cliente in clientes:
+            if termino in cliente.nombre.lower() or termino in cliente.email.lower():
+                tabla.insert("", "end", values=(
+                    cliente.id,
+                    cliente.nombre,
+                    cliente.email,
+                    cliente.telefono,
+                    cliente.edad,
+                    cliente.fecha_registro.strftime("%d/%m/%Y") if cliente.fecha_registro else "N/A"
+            ))
+
+    entry_busqueda.bind("<KeyRelease>", buscar_cliente)
 
     # ACTUALIZAR LA TABLA 
 
