@@ -3,6 +3,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 
+"""
+Definos los modelos de base de datos para la aplicación. 
+"""
+
 # CONECTAR A LA BD
 engine = create_engine("sqlite:///nutrition.db")
 Base = declarative_base()
@@ -27,6 +31,7 @@ class Cliente(Base):
 
     citas = relationship("Cita", back_populates="cliente")
     dietas = relationship("Dieta", back_populates="cliente")
+    evoluciones = relationship("Evolucion", back_populates="cliente")
 
 # TABLA CITAS 
 
@@ -55,6 +60,8 @@ class Evolucion(Base):
     peso = Column(Float)
     notas = Column(String(500))
 
+    cliente = relationship("Cliente", back_populates="evoluciones")
+
 # TABLA DIETA
 class Dieta(Base):
     __tablename__ = "dieta"
@@ -78,4 +85,4 @@ class Usuario(Base):
 
 # CREAR LAS TABLAS
 Base.metadata.create_all(engine)
-print("✅ Base de datos creada correctamente")
+print("Base de datos creada correctamente")

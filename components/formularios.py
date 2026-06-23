@@ -7,7 +7,14 @@ from tkinter.filedialog import askopenfilename, asksaveasfilename
 import os
 import tempfile
 import re
+from tkinter import messagebox
 
+
+
+"""
+Módulo de formularios.
+Contiene funciones para agregar y editar clientes, citas, dietas  y evoluciones. 
+"""
 
 
 
@@ -45,7 +52,9 @@ def validar_campos_cita(cliente_nombre,fecha,hora,duracion):
     if duracion and not duracion.isdigit():
         return False, "La duración tiene que ser un número"
     
-    # CREAR VENTANA
+    return True, "OK"
+
+# CREAR VENTANA
 def agregar_cliente(parent):
     ventana = tb.Toplevel(parent)
     ventana.title("Nuevo Cliente")
@@ -131,28 +140,33 @@ def agregar_cliente(parent):
 
         valido, mensaje = validar_campos_cliente(nombre,email,telefono)
         if not valido: 
-            print(f"{mensaje}")
+            messagebox.showwarning("Cuidado",mensaje)
             return
 
-        session = Session()
-        nuevo_cliente = Cliente(
-            nombre=nombre,
-            email=email,
-            telefono = telefono,
-            edad=edad,
-            peso_inicial = float(peso) if peso else None,
-            altura = float(altura) if altura else None,
-            alergias = alergias,
-            intolerancias = intolerancias,
-            objetivos = objetivos,
-            fecha_registro = datetime.now()
-        )
+        try:
+            session = Session()
+            nuevo_cliente = Cliente(
+                nombre=nombre,
+                email=email,
+                telefono = telefono,
+                edad=edad,
+                peso_inicial = float(peso) if peso else None,
+                altura = float(altura) if altura else None,
+                alergias = alergias,
+                intolerancias = intolerancias,
+                objetivos = objetivos,
+                fecha_registro = datetime.now()
+            )
 
-        session.add(nuevo_cliente)
-        session.commit()
-        session.close()
+            session.add(nuevo_cliente)
+            session.commit()
+            session.close()
+            messagebox.showinfo("Éxito","Cliente guardado correctamente")
 
-        ventana.destroy()
+            ventana.destroy()
+        
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al guardar: {e}")
 
 
     # BOTÓN DE GUARDAR
@@ -167,18 +181,21 @@ def agregar_cita(parent):
 
 
     # OBTENER LOS CLIENTES
+    try:
 
-    session = Session()
-    clientes = session.query(Cliente).all()
-    session.close()
-
-    nombres_clientes = [cliente.nombre for cliente in clientes]
+        session = Session()
+        clientes = session.query(Cliente).all()
+        session.close()
+        nombres_clientes = [cliente.nombre for cliente in clientes]
+    except Exception as e:
+        messagebox.showerror("Error",f"Error al obtener los clientes: {e}")
+        ventana.destroy()
+        return
 
     # LABEL Y COMBOBOX PARA SELECCIONAR CLIENTES
 
     label_cliente = tb.Label(ventana, text  = "Cliente:")
     label_cliente.pack(pady= 5, padx= 20, anchor= W)
-
     combobox_cliente = Combobox(ventana, values =  nombres_clientes, width = 30)
     combobox_cliente.pack(pady = 5, padx= 20, fill = X)
 
@@ -214,7 +231,6 @@ def agregar_cita(parent):
     entry_notas.pack(pady=5,padx=20,fill=X)
 
     # FUNCIÓN GUARDAR CITAS 
-
     
     def guardar_cita():
         # OBTENER LAS COTAS
@@ -228,31 +244,34 @@ def agregar_cita(parent):
 
         valido, mensaje = validar_campos_cita(cliente_nombre, fecha,hora,duracion)
         if not valido:
-            print(f"{mensaje}")
+            messagebox.showwarning("Cuidado", mensaje)
             return
 
 
         # OBTENER EL ID DEL CLIENTE A TRAVÉS DEL NOMBRE
+        try:
+            session = Session()
+            cliente = session.query(Cliente).filter_by(nombre = cliente_nombre).first()
 
-        session = Session()
-        cliente = session.query(Cliente).filter_by(nombre = cliente_nombre).first()
+            if cliente: 
+                fecha_hora = datetime.strptime(f"{fecha} {hora}", "%d/%m/%Y %H:%M")
 
-        if cliente: 
-            fecha_hora = datetime.strptime(f"{fecha} {hora}", "%d.%m.%Y %H:%M")
+                nueva_cita = Cita(
+                    cliente_id = cliente.id,
+                    fecha = fecha_hora,
+                    duracion = int(duracion) if duracion else None,
+                    notas_sesion = notas,
+                    completada = 0
+                )
 
-            nueva_cita = Cita(
-                cliente_id = cliente.id,
-                fecha = fecha_hora,
-                duracion = int(duracion) if duracion else None,
-                notas_sesion = notas,
-                completada = 0
-            )
+                session.add(nueva_cita)
+                session.commit()
 
-            session.add(nueva_cita)
-            session.commit()
-
-        session.close()
-        ventana.destroy()
+            session.close()
+            messagebox.showinfo("Éxito","Cita guardada correctamente.")
+            ventana.destroy()
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al guardar la cita: {e}")
 
 
     # BOTÓN DE GUARDAR
@@ -267,14 +286,18 @@ def editar_cliente(parent,cliente_id):
     ventana.geometry("400x700")
 
     # OBTENEMOS EL CLIENTE DE LA BD 
+    try:
+        session = Session()
+        cliente = session.query(Cliente).filter_by(id=cliente_id).first()
+        session.close()
 
-    session = Session()
-    cliente = session.query(Cliente).filter_by(id=cliente_id).first()
-    session.close()
-
-    if not cliente:
-        print("Cliente no encontrado")
-        return 
+        if not cliente:
+            print("Cliente no encontrado")
+            return 
+    except Exception as e:
+        messagebox.showerror("Error",f"Error al obtener cliente: {e}")
+        ventana.destroy()
+        return
         
     # NOMBRE 
 
@@ -350,22 +373,26 @@ def editar_cliente(parent,cliente_id):
 
     def guardar_cambios():
         # ACTUALIZAMOS LA DB
-        session = Session()
-        cliente = session.query(Cliente).filter_by(id=cliente_id).first()
+        try:
 
-        cliente.nombre = entry_nombre.get()
-        cliente.email = entry_email.get()
-        cliente.telefono = entry_telefono.get()
-        cliente.edad = entry_edad.get()
-        cliente.peso_inicial = float(entry_peso_inicial.get()) if entry_peso_inicial.get() else None
-        cliente.altura = float(entry_altura.get()) if entry_altura.get() else None
-        cliente.alergias = entry_alergias.get()
-        cliente.intolerancias = entry_intolerancias.get()
-        cliente.objetivos = entry_objetivos.get()
+            session = Session()
+            cliente = session.query(Cliente).filter_by(id=cliente_id).first()
 
-        session.commit()
-        session.close()
-        ventana.destroy()
+            cliente.nombre = entry_nombre.get()
+            cliente.email = entry_email.get()
+            cliente.telefono = entry_telefono.get()
+            cliente.edad = entry_edad.get()
+            cliente.peso_inicial = float(entry_peso_inicial.get()) if entry_peso_inicial.get() else None
+            cliente.altura = float(entry_altura.get()) if entry_altura.get() else None
+            cliente.alergias = entry_alergias.get()
+            cliente.intolerancias = entry_intolerancias.get()
+            cliente.objetivos = entry_objetivos.get()
+
+            session.commit()
+            session.close()
+            ventana.destroy()
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al guardar el cambio: {e}")
 
     # BOTÓN DE GUARDAR
     boton_guardar = tb.Button(ventana, text="Guardar", command= guardar_cambios, bootstyle= "success")
@@ -379,26 +406,31 @@ def editar_cita(parent, cita_id):
 
 
     # OBTENER LA CITA
-
-    session = Session()
-    cita = session.query(Cita).filter_by(id=cita_id).first()
+    try:
+        session = Session()
+        cita = session.query(Cita).filter_by(id=cita_id).first()
+        
+        if not cita: 
+            messagebox.showwarning("Cuidado","Cita no encontrada")
+            session.close()
+            ventana.destroy()
+            return 
     
-    if not cita: 
-        print("Cita no encontrada.")
+
+        # GUARDAR NOMBRE ANTES DE CERRAR
+
+        cliente_nombre_actual = cita.cliente.nombre if cita.cliente else ""
+    
+        # OBTENER CLIENTES
+
+        clientes = session.query(Cliente).all()
+        nombres_clientes = [cliente.nombre for cliente in clientes]
+    
         session.close()
+    except Exception as e:
+        messagebox.showerror("Error",f"Error al obtener la cita: {e}")
+        ventana.destroy()
         return 
-    
-
-    # GUARDAR NOMBRE ANTES DE CERRAR
-
-    cliente_nombre_actual = cita.cliente.nombre if cita.cliente else ""
-    
-    # OBTENER CLIENTES
-
-    clientes = session.query(Cliente).all()
-    nombres_clientes = [cliente.nombre for cliente in clientes]
-    
-    session.close()
     
     # CREAR COMBOBOX
 
@@ -445,24 +477,28 @@ def editar_cita(parent, cita_id):
     entry_notas.pack(pady=5,padx=20,fill=X)
 
     def guardar_cambios():
-        session = Session()
-        cita = session.query(Cita).filter_by(id=cita_id).first()
+        try:
+            session = Session()
+            cita = session.query(Cita).filter_by(id=cita_id).first()
 
-        # OBTENEMOS EL CLIEJNTE POR EL NOMBRE
-        cliente_nombre = combobox_cliente.get()
-        cliente = session.query(Cliente).filter_by(nombre = cliente_nombre).first()
+            # OBTENEMOS EL CLIEJNTE POR EL NOMBRE
+            cliente_nombre = combobox_cliente.get()
+            cliente = session.query(Cliente).filter_by(nombre = cliente_nombre).first()
 
-        if cliente: 
-            fecha_hora = datetime.strptime(f"{entry_fecha.get()} {entry_hora.get()}", "%d.%m.%Y %H:%M")
-            cita.cliente_id = cliente.id
-            cita.fecha = fecha_hora 
-            cita.duracion = int(entry_duracion.get()) if entry_duracion.get() else None
-            cita.notas_sesion = entry_notas.get()
+            if cliente: 
+                fecha_hora = datetime.strptime(f"{entry_fecha.get()} {entry_hora.get()}", "%d.%m.%Y %H:%M")
+                cita.cliente_id = cliente.id
+                cita.fecha = fecha_hora 
+                cita.duracion = int(entry_duracion.get()) if entry_duracion.get() else None
+                cita.notas_sesion = entry_notas.get()
 
-            session.commit()
+                session.commit()
+                messagebox.showinfo("Éxito","Cita actualizada correctamente.")
         
-        session.close()
-        ventana.destroy()
+            session.close()
+            ventana.destroy()
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al guardar los cambios: {e}")
 
 
     # BOTÓN DE GUARDAR
@@ -478,13 +514,18 @@ def ficha_cliente(parent, cliente_id):
     ventana.geometry("700x600")
 
     # OBTENEMOS EL CLIENTE
+    try:
+        session = Session()
+        cliente = session.query(Cliente).filter_by(id = cliente_id).first()
+        session.close()
 
-    session = Session()
-    cliente = session.query(Cliente).filter_by(id = cliente_id).first()
-    session.close()
-
-    if not cliente:
-        print("Cliente no encontrado.")
+        if not cliente:
+            messagebox.showwarning("Cuidado","Cliente no encontrado")
+            return
+    
+    except Exception as e:
+        messagebox.showerror("Error",f"Error al obtener cliente: {e}")
+        ventana.destroy()
         return
     
     # CREAR NOTEBOOK 
@@ -523,15 +564,20 @@ def ficha_cliente(parent, cliente_id):
     tabla_dietas.column("Fecha", width=120, anchor="center")
 
     # LLENAR TABLA CON DIETAS DEL CLIENTE
-    session_dieta = Session()
-    dietas = session_dieta.query(Dieta).filter_by(cliente_id=cliente_id).all()
-    for dieta in dietas:
-        tabla_dietas.insert("", "end", values=(
-            dieta.id,
-            dieta.nombre,
-            dieta.fecha.strftime("%d/%m/%Y") if dieta.fecha else "N/A"
-        ))
-    session_dieta.close()
+
+    try:
+        session_dieta = Session()
+        dietas = session_dieta.query(Dieta).filter_by(cliente_id=cliente_id).all()
+        for dieta in dietas:
+            tabla_dietas.insert("", "end", values=(
+                dieta.id,
+                dieta.nombre,
+                dieta.fecha.strftime("%d/%m/%Y") if dieta.fecha else "N/A"
+            ))
+        session_dieta.close()
+    except Exception as e:
+        messagebox.showerror("Error",f"Error al obtener dietas: {e}")
+
 
     tabla_dietas.pack(fill=BOTH, expand=True)
 
@@ -540,84 +586,108 @@ def ficha_cliente(parent, cliente_id):
     frame_botones_dieta.pack(fill=X, padx=20, pady=10)
 
     def agregar_dieta():
-        from tkinter.filedialog import askopenfilename
-        archivo = askopenfilename(filetypes=[("PDF files", "*.pdf")])
-        if archivo:
-            nombre = os.path.basename(archivo).replace(".pdf", "")
-            with open(archivo, "rb") as f:
-                contenido = f.read()
-            
-            session_add = Session()
-            nueva_dieta = Dieta(
-                cliente_id=cliente_id,
-                nombre=nombre,
-                fecha=datetime.now(),
-                archivo=contenido
-            )
-            session_add.add(nueva_dieta)
-            session_add.commit()
-            session_add.close()
-            
-            actualizar_tabla_dietas()
+        
+        try:
+            archivo = askopenfilename(filetypes=[("PDF files", "*.pdf")])
+            if archivo:
+                nombre = os.path.basename(archivo).replace(".pdf", "")
+                with open(archivo, "rb") as f:
+                    contenido = f.read()
+                
+                session_add = Session()
+                nueva_dieta = Dieta(
+                    cliente_id=cliente_id,
+                    nombre=nombre,
+                    fecha=datetime.now(),
+                    archivo=contenido
+                )
+                session_add.add(nueva_dieta)
+                session_add.commit()
+                session_add.close()
+                
+                actualizar_tabla_dietas()
+                messagebox.showinfo("Éxito","Dieta agregada correctamente.")
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al agregar dieta: {e}")
 
     def abrir_dieta():
-        seleccion = tabla_dietas.selection()
-        if not seleccion:
-            return
-        
-        dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
-        session_open = Session()
-        dieta = session_open.query(Dieta).filter_by(id=dieta_id).first()
-        if dieta and dieta.archivo:
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-                f.write(dieta.archivo)
-                os.startfile(f.name)
-        session_open.close()
+        try:
+            seleccion = tabla_dietas.selection()
+            if not seleccion:
+                messagebox.showwarning("Cuidado","Selecciona una dieta.")
+                return
+            
+            dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
+            session_open = Session()
+            dieta = session_open.query(Dieta).filter_by(id=dieta_id).first()
+            if dieta and dieta.archivo:
+                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+                    f.write(dieta.archivo)
+                    os.startfile(f.name)
+            session_open.close()
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al abrir dieta: {e}")
+
 
     def descargar_dieta():
-        seleccion = tabla_dietas.selection()
-        if not seleccion:
-            return
+        try:
+            seleccion = tabla_dietas.selection()
+            if not seleccion:
+                messagebox.showwarning("Cuidado","Selecciona una dieta.")
+                return
         
-        dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
-        session_down = Session()
-        dieta = session_down.query(Dieta).filter_by(id=dieta_id).first()
-        if dieta and dieta.archivo:
-            archivo = asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
-            if archivo:
-                with open(archivo, "wb") as f:
-                    f.write(dieta.archivo)
-        session_down.close()
+            dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
+            session_down = Session()
+            dieta = session_down.query(Dieta).filter_by(id=dieta_id).first()
+            if dieta and dieta.archivo:
+                archivo = asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+                if archivo:
+                    with open(archivo, "wb") as f:
+                        f.write(dieta.archivo)
+            session_down.close()
+        
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al descargar: {e}")
 
     def eliminar_dieta():
-        seleccion = tabla_dietas.selection()
-        if not seleccion:
-            return
+        try:
+            seleccion = tabla_dietas.selection()
+            if not seleccion:
+                messagebox.showwarning("Cuidado","Selecciona una dieta.")
+                return
+            
+            dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
+            session_del = Session()
+            dieta = session_del.query(Dieta).filter_by(id=dieta_id).first()
+            if dieta:
+                session_del.delete(dieta)
+                session_del.commit()
+            session_del.close()
+            actualizar_tabla_dietas()
         
-        dieta_id = tabla_dietas.item(seleccion[0])["values"][0]
-        session_del = Session()
-        dieta = session_del.query(Dieta).filter_by(id=dieta_id).first()
-        if dieta:
-            session_del.delete(dieta)
-            session_del.commit()
-        session_del.close()
-        actualizar_tabla_dietas()
+        except Exception as e: 
+            messagebox.showerror("Error",f"Error al eliminar: {e}")
 
 
 
     def actualizar_tabla_dietas():
-        for item in tabla_dietas.get_children():
-            tabla_dietas.delete(item)
-        
-        session_upd = Session()
-        dietas = session_upd.query(Dieta).filter_by(cliente_id=cliente_id).all()
-        for dieta in dietas:
-            tabla_dietas.insert("", "end", values=(
-                dieta.id,
-                dieta.nombre,
-                dieta.fecha.strftime("%d/%m/%Y") if dieta.fecha else "N/A"
-            ))
-        session_upd.close()
+        try:
+            for item in tabla_dietas.get_children():
+                tabla_dietas.delete(item)
+            
+            session_upd = Session()
+            dietas = session_upd.query(Dieta).filter_by(cliente_id=cliente_id).all()
+            for dieta in dietas:
+                tabla_dietas.insert("", "end", values=(
+                    dieta.id,
+                    dieta.nombre,
+                    dieta.fecha.strftime("%d/%m/%Y") if dieta.fecha else "N/A"
+                ))
+            session_upd.close()
+
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al actualizar: {e}")
+
 
     boton_agregar_dieta = tb.Button(frame_botones_dieta, text="Agregar Dieta", command=agregar_dieta, bootstyle="success")
     boton_agregar_dieta.pack(side=LEFT, padx=5)
@@ -629,13 +699,6 @@ def ficha_cliente(parent, cliente_id):
 
     boton_eliminar_dieta = tb.Button(frame_botones_dieta, text="Eliminar", command=eliminar_dieta, bootstyle="danger")
     boton_eliminar_dieta.pack(side=LEFT, padx=5)
-
-
-
-        
-        
-        
-
 
 
     # 3. CITAS
@@ -664,25 +727,28 @@ def ficha_cliente(parent, cliente_id):
     tabla_citas_cliente.column("Notas",width= 200, anchor="w")
 
     # OBTENER LAS CITAS DEL CLIENTE
+    try:
+        session_citas_cliente =  Session()
+        citas_cliente = session_citas_cliente.query(Cita).filter_by(cliente_id = cliente_id).order_by(Cita.fecha).all()
 
-    session_citas_cliente =  Session()
-    citas_cliente = session_citas_cliente.query(Cita).filter_by(cliente_id = cliente_id).order_by(Cita.fecha).all()
-
-    for cita in citas_cliente:
-        tabla_citas_cliente.insert("","end", values=(
-            cita.id,
-            cita.fecha.strftime("%d.%m.%Y") if cita.fecha else "N/A",
-            cita.fecha.strftime("%H:%M") if cita.fecha else "N/A",
-            f"{cita.duracion} min" if cita.duracion else "N/A",
-            cita.notas_sesion if cita.notas_sesion else "No hay notas."
-        ))
+        for cita in citas_cliente:
+            tabla_citas_cliente.insert("","end", values=(
+                cita.id,
+                cita.fecha.strftime("%d.%m.%Y") if cita.fecha else "N/A",
+                cita.fecha.strftime("%H:%M") if cita.fecha else "N/A",
+                f"{cita.duracion} min" if cita.duracion else "N/A",
+                cita.notas_sesion if cita.notas_sesion else "No hay notas."
+            ))
 
 
-    session_citas_cliente.close()
-    tabla_citas_cliente.pack(fill=BOTH, expand= True)
+        session_citas_cliente.close()
+    
+    except Exception as e: 
+        messagebox.showwarning("Error",f"Error al obtener citas: {e}")
 
-                            
+    tabla_citas_cliente.pack(fill=BOTH, expand= True)                        
     tb.Label(tab_citas, text ="Citas del Cliente",font=("Arial",14)).pack(pady=20)
+    
 
     # 4. EVOLUCIÓN 
 
@@ -706,20 +772,26 @@ def ficha_cliente(parent, cliente_id):
     tabla_evolucion.column("Peso (KG)",width=80,anchor="center")
     tabla_evolucion.column("Notas",width=200,anchor="w")
 
-    # OBTENER EVOLUCIÓN 
+    # OBTENER EVOLUCIÓN
 
-    session_evo = Session()
-    evolucion = session_evo.query(Evolucion).filter_by(cliente_id = cliente_id) .order_by(Evolucion.fecha.desc()).all()
+    try: 
 
-    for evo in evolucion: 
-        tabla_evolucion.insert("", "end", values =(
-            evo.id,
-            evo.fecha.strftime("%d.%m.%Y") if evo.fecha else "N/A",
-            evo.peso if evo.peso else "N/A",
-            evo.notas if evo.notas else "No hay notas."
-        ))
+        session_evo = Session()
+        evolucion = session_evo.query(Evolucion).filter_by(cliente_id = cliente_id) .order_by(Evolucion.fecha.desc()).all()
 
-    session_evo.close()
+        for evo in evolucion: 
+            tabla_evolucion.insert("", "end", values =(
+                evo.id,
+                evo.fecha.strftime("%d.%m.%Y") if evo.fecha else "N/A",
+                evo.peso if evo.peso else "N/A",
+                evo.notas if evo.notas else "No hay notas."
+            ))
+
+        session_evo.close()
+
+    except Exception as e:
+        messagebox.showerror("Error",f"Error al obtener evolución: {e}")
+
     tabla_evolucion.pack(fill=BOTH,expand=True)
 
     # BOTONES 
@@ -744,39 +816,49 @@ def ficha_cliente(parent, cliente_id):
             notas = text_notas.get("1.0", "end-1c")
 
             if not peso:
-                print("Ingresa el peso")
+                messagebox.showwarning("Cuidado","Ingresa el peso.")
                 return
             
-            session_add_evo = Session()
-            nueva_evo = Evolucion(cliente_id = cliente_id, fecha = datetime.now(), peso = float(peso), notas = notas)
+            try:
+                session_add_evo = Session()
+                nueva_evo = Evolucion(cliente_id = cliente_id, fecha = datetime.now(), peso = float(peso), notas = notas)
 
 
-            session_add_evo.add(nueva_evo)
-            session_add_evo.commit()
-            session_add_evo.close()
+                session_add_evo.add(nueva_evo)
+                session_add_evo.commit()
+                session_add_evo.close()
 
-            actualizar_tabla_evolucion()
-            ventana_evo.destroy()
+                actualizar_tabla_evolucion()
+                ventana_evo.destroy()
+
+            except Exception as e:
+                messagebox.showerror("Error",f"Error al guardar: {e}")
+            
+
 
         boton_guardar = tb.Button(ventana_evo, text="Guardar", command = guardar_evo, bootstyle= "success")
         boton_guardar.pack(pady=20)
 
     def actualizar_tabla_evolucion():
-        for item in tabla_evolucion.get_children():
-            tabla_evolucion.delete(item)
+        try:
+            for item in tabla_evolucion.get_children():
+                tabla_evolucion.delete(item)
 
-        session_up_evo = Session()
-        evolucion = session_up_evo.query(Evolucion).filter_by(cliente_id=cliente_id).order_by(Evolucion.fecha.desc()).all()
-        for evo in evolucion:
-            tabla_evolucion.insert("", "end",values=(
-                evo.id,
-                evo.fecha.strftime("%d.%m.%Y") if evo.fecha else "N/A",
-                evo.peso if evo.peso else "N/A",
-                evo.notas if evo.notas else "No hay notas."
+            session_up_evo = Session()
+            evolucion = session_up_evo.query(Evolucion).filter_by(cliente_id=cliente_id).order_by(Evolucion.fecha.desc()).all()
+            for evo in evolucion:
+                tabla_evolucion.insert("", "end",values=(
+                    evo.id,
+                    evo.fecha.strftime("%d.%m.%Y") if evo.fecha else "N/A",
+                    evo.peso if evo.peso else "N/A",
+                    evo.notas if evo.notas else "No hay notas."
 
-            ))
+                ))
 
-        session_up_evo.close()
+            session_up_evo.close()
+
+        except Exception as e:
+            messagebox.showerror("Error",f"Error al actualizar: {e}")
     
     boton_agregar_evo = tb.Button(frame_botones_evo, text="Agregar Evolución", command = agregar_evolucion, bootstyle= "success")
     boton_agregar_evo.pack(side=LEFT,padx=5)
